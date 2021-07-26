@@ -1,0 +1,5 @@
+statefulSetNameSuffix: postgres-db
+statefulSetReplicaCount: 3
+appImageName: # Image name of the app-container
+cronJobImageName: # Image name of the cron-container
+storageClassName: postgres-storage-class  # Set to your specific storage class

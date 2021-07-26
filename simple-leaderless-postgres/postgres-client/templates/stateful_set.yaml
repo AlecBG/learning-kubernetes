@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.statefulSetNameSuffix }}
+spec:
+  serviceName: {{ .Release.Name }}-postgres-db-service
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: {{ .Values.statefulSetReplicaCount }}
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-postgres-db
+        image: postgres:latest
+        volumeMounts:
+          - name: {{ .Release.Name }}-db
+            mountPath: /var/lib/postgresql/data
+            subPath: postgres
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-postgres-password
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config-map
+              key: POSTGRES_USER
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config-map
+              key: POSTGRES_DB
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ .Release.Name }}-db
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.storageClassName }}
+        resources:
+          requests:
+            storage: 200Mi

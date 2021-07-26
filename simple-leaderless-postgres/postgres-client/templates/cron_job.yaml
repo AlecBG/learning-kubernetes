@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-table-cleaner
+spec:
+  schedule: "0 0 * * *"  # Runs at midnight every day.
+  startingDeadlineSeconds: 60
+  jobTemplate:
+    spec:
+      backoffLimit: 4
+      completions: 1
+      parallelism: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: cleaner
+            image: {{ .Values.cronJobImageName }}
+            env:
+            - name: NAMESPACE
+              value: {{ .Release.Namespace}}
+            - name: N_REPLICAS_STATEFUL_SET
+              value: {{ .Values.statefulSetReplicaCount | quote }}
+            - name: RDS_NAME
+              value: {{ .Release.Name }}-{{ .Values.statefulSetNameSuffix }}
+            - name: RDS_SERVER
+              value: {{ .Release.Name }}-postgres-db-service
+            - name: RDS_PORT
+              value: '5432'
+            - name: RDS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgres-password
+                  key: POSTGRES_PASSWORD
+            - name: RDS_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-config-map
+                  key: POSTGRES_USER
+            - name: RDS_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-config-map
+                  key: POSTGRES_DB

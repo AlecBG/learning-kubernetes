@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app
+  labels:
+    app: app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: app
+  minReadySeconds: 30
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-app
+        image: {{ .Values.appImageName }}
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /health/check
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /readiness/check
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        resources:
+          requests:
+            cpu: 300m
+          limits:
+            cpu: 600m
+        env:
+        - name: NAMESPACE
+          value: {{ .Release.Namespace}}
+        - name: N_REPLICAS_STATEFUL_SET
+          value: {{ .Values.statefulSetReplicaCount | quote }}
+        - name: RDS_NAME
+          value: {{ .Release.Name }}-{{ .Values.statefulSetNameSuffix }}
+        - name: RDS_SERVER
+          value: {{ .Release.Name }}-postgres-db-service
+        - name: RDS_PORT
+          value: '5432'
+        - name: RDS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-postgres-password
+              key: POSTGRES_PASSWORD
+        - name: RDS_USER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config-map
+              key: POSTGRES_USER
+        - name: RDS_DB
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Release.Name }}-config-map
+              key: POSTGRES_DB
